@@ -1,0 +1,64 @@
+name: Deploy Infrastructure (OpenTofu)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "infra/**"
+      - ".github/workflows/deploy-infra.yml"
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "OpenTofu action to execute"
+        required: true
+        default: "plan"
+        type: choice
+        options:
+          - plan
+          - apply
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+
+jobs:
+  opentofu-deploy:
+    name: OpenTofu Plan & Apply
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./infra
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.6.2"
+
+      - name: OpenTofu Init
+        run: tofu init
+
+      - name: OpenTofu Format Check
+        run: tofu fmt -check
+
+      - name: OpenTofu Plan
+        id: plan
+        run: tofu plan -no-color -out=tfplan
+
+      - name: OpenTofu Apply (on main branch push or manual apply trigger)
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event.inputs.action == 'apply')
+        run: tofu apply -auto-approve tfplan

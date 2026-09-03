@@ -1,0 +1,11 @@
+aws_region         = "us-east-1"
+project_name       = "ecs-flask"
+environment        = "dev"
+vpc_cidr           = "10.0.0.0/16"
+enable_nat_gateway = true
+container_port     = 5000
+app_count          = 2
+fargate_cpu        = 256
+fargate_memory     = 512
+github_repo        = "YOUR_GITHUB_ORG_OR_USER/ecs-with-cicd"
+github_branch      = "main"

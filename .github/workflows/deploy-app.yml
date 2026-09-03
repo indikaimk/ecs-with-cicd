@@ -1,0 +1,96 @@
+name: Deploy Application to ECS
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "app/**"
+      - ".github/workflows/deploy-app.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write   # Required for requesting the AWS OIDC JWT
+  contents: read    # Required to checkout the repository
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'ecs-flask-dev' }}
+  ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'ecs-flask-dev-cluster' }}
+  ECS_SERVICE: ${{ vars.ECS_SERVICE || 'ecs-flask-dev-service' }}
+  CONTAINER_NAME: "flask-app"
+
+jobs:
+  test-and-build-deploy:
+    name: Build, Push & Deploy to ECS Fargate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "app/requirements.txt"
+
+      - name: Install Dependencies and Run Tests
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+          pytest app/tests/ -v
+
+      - name: Configure AWS Credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
+
+      - name: Log in to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build, Tag, and Push Image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          LATEST_URI="$ECR_REGISTRY/$ECR_REPOSITORY:latest"
+          
+          echo "Building Docker image: $IMAGE_URI"
+          docker build -t $IMAGE_URI -t $LATEST_URI ./app
+          
+          echo "Pushing Docker images to ECR..."
+          docker push $IMAGE_URI
+          docker push $LATEST_URI
+          
+          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+      - name: Download Current ECS Task Definition
+        run: |
+          aws ecs describe-task-definition \
+            --task-definition ${{ env.ECS_SERVICE }} \
+            --query taskDefinition > task-definition.json
+
+      - name: Render New ECS Task Definition with Updated Image
+        id: render-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: ${{ env.CONTAINER_NAME }}
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Task Definition to ECS Service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true

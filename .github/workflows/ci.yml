@@ -1,0 +1,83 @@
+name: CI - Lint, Test & Validate
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches-ignore: [ main ]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Python App Tests & Linting
+  # ---------------------------------------------------------------------------
+  python-tests:
+    name: Python Lint & Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: "app/requirements.txt"
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r app/requirements.txt
+
+      - name: Run Ruff Linter
+        run: |
+          ruff check app/
+
+      - name: Run Pytest
+        run: |
+          pytest app/tests/ -v --cov=app/src --cov-report=term-missing
+
+  # ---------------------------------------------------------------------------
+  # Docker Container Build Validation
+  # ---------------------------------------------------------------------------
+  docker-build-check:
+    name: Docker Build Dry-Run
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker Image (Dry Run)
+        uses: docker/build-push-action@v5
+        with:
+          context: ./app
+          file: ./app/Dockerfile
+          push: false
+          tags: ecs-flask-app:test
+
+  # ---------------------------------------------------------------------------
+  # OpenTofu Lint & Validate
+  # ---------------------------------------------------------------------------
+  opentofu-validate:
+    name: OpenTofu Format & Validate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: "1.6.2"
+
+      - name: OpenTofu Format Check
+        run: tofu -chdir=infra fmt -check
+
+      - name: OpenTofu Init
+        run: tofu -chdir=infra init -backend=false
+
+      - name: OpenTofu Validate
+        run: tofu -chdir=infra validate
