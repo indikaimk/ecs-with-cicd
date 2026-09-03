@@ -18,6 +18,7 @@ env:
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'ecs-flask-dev' }}
   ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'ecs-flask-dev-cluster' }}
   ECS_SERVICE: ${{ vars.ECS_SERVICE || 'ecs-flask-dev-service' }}
+  ECS_TASK_DEFINITION: ${{ vars.ECS_TASK_DEFINITION || 'ecs-flask-dev-task' }}
   CONTAINER_NAME: "flask-app"
 
 jobs:
@@ -79,7 +80,7 @@ jobs:
       - name: Download Current ECS Task Definition
         run: |
           aws ecs describe-task-definition \
-            --task-definition ${{ env.ECS_SERVICE }} \
+            --task-definition ${{ env.ECS_TASK_DEFINITION }} \
             --query taskDefinition > task-definition.json
 
       - name: Render New ECS Task Definition with Updated Image
