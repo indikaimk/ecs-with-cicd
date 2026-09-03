@@ -32,7 +32,7 @@ def create_app() -> Flask:
     """Application factory for Flask app."""
     app = Flask(__name__)
 
-    app_version = os.getenv("APP_VERSION", "1.0.0")
+    app_version = os.getenv("APP_VERSION", "1.0.1")
     environment = os.getenv("APP_ENV", "development")
     start_time = time.time()
 
@@ -90,5 +90,5 @@ def create_app() -> Flask:
 app = create_app()
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", "5000"))
+    port = int(os.getenv("PORT", "5001"))
     app.run(host="0.0.0.0", port=port)
