@@ -55,7 +55,7 @@ variable "fargate_memory" {
 variable "github_repo" {
   description = "GitHub repository in the format 'owner/repo-name' for OIDC trust policy (e.g., 'octocat/ecs-with-cicd')."
   type        = string
-  default     = "my-org/ecs-with-cicd"
+  default     = "indikaimk/ecs-with-cicd"
 }
 
 variable "github_branch" {
