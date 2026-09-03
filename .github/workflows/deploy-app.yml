@@ -14,7 +14,7 @@ permissions:
 
 env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
-  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+  AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME || 'arn:aws:iam::954976303999:role/ecs-flask-dev-github-actions-role' }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY || 'ecs-flask-dev' }}
   ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'ecs-flask-dev-cluster' }}
   ECS_SERVICE: ${{ vars.ECS_SERVICE || 'ecs-flask-dev-service' }}
@@ -24,6 +24,9 @@ jobs:
   test-and-build-deploy:
     name: Build, Push & Deploy to ECS Fargate
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -46,6 +49,7 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
+          audience: sts.amazonaws.com
 
       - name: Log in to Amazon ECR
         id: login-ecr
