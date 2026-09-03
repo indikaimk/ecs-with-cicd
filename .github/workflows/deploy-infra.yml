@@ -42,7 +42,6 @@ jobs:
         with:
           role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ env.AWS_REGION }}
-          audience: sts.amazonaws.com
 
       - name: Setup OpenTofu
         uses: opentofu/setup-opentofu@v1

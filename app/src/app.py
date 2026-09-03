@@ -32,7 +32,7 @@ def create_app() -> Flask:
     """Application factory for Flask app."""
     app = Flask(__name__)
 
-    app_version = os.getenv("APP_VERSION", "1.0.2")
+    app_version = os.getenv("APP_VERSION", "1.0.3")
     environment = os.getenv("APP_ENV", "development")
     start_time = time.time()
 
