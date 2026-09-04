@@ -60,13 +60,13 @@ resource "aws_lb_target_group" "app" {
     port                = var.container_port
     protocol            = "HTTP"
     matcher             = "200"
-    interval            = 30
+    interval            = 15
     timeout             = 5
     healthy_threshold   = 2
-    unhealthy_threshold = 3
+    unhealthy_threshold = 2
   }
 
-  deregistration_delay = 30
+  deregistration_delay = 15
 
   tags = {
     Name = "${var.project_name}-${var.environment}-tg"

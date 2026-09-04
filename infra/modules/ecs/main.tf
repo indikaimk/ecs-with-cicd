@@ -178,6 +178,11 @@ resource "aws_ecs_service" "app" {
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
 
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
   # Allow GitHub Actions deployments without OpenTofu resetting the task definition
   lifecycle {
     ignore_changes = [task_definition, desired_count]
